@@ -1,0 +1,51 @@
+name: Alpine Release
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - '*'
+      - '!*-alpha*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Build Frontend
+        env:
+          CI: ""
+        run: |
+          cd web
+          npm install
+          REACT_APP_VERSION=$(git describe --tags) npm run build
+          cd ..
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '>=1.18.0'
+
+      - name: Build Backend for Alpine
+        run: |
+          go mod download
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'one-api/common.Version=$(git describe --tags)'" -o one-api-alpine
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: one-api-alpine
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
