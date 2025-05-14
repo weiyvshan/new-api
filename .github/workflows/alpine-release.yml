@@ -3,6 +3,7 @@ permissions:
   contents: write
 
 on:
+  workflow_dispatch:  # 添加这一行以支持手动触发
   push:
     tags:
       - '*'
